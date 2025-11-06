@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Make plugin compatible with modern versions of the IJ platform (#55) @vietage
+
 ## [0.0.18] - 2025-06-04
 
 ### Added
