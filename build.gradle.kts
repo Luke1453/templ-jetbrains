@@ -1,6 +1,4 @@
 import org.jetbrains.changelog.Changelog
-import org.jetbrains.changelog.date
-import org.jetbrains.changelog.ChangelogSectionUrlBuilder
 import org.jetbrains.changelog.markdownToHTML
 
 fun properties(key: String) = providers.gradleProperty(key)
@@ -8,8 +6,7 @@ fun properties(key: String) = providers.gradleProperty(key)
 plugins {
     id("java")
     alias(libs.plugins.kotlin) // Kotlin support
-    id("org.jetbrains.intellij.platform") version "2.6.0" // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij.platform.migration") version "2.6.0"
+    alias(libs.plugins.intelliJPlatform) // IntelliJ Platform Gradle Plugin
     alias(libs.plugins.changelog) // Gradle Changelog Plugin
     alias(libs.plugins.qodana) // Gradle Qodana Plugin
     alias(libs.plugins.kover) // Gradle Kover Plugin
@@ -57,7 +54,6 @@ intellijPlatform {
         }
         ideaVersion {
             sinceBuild = providers.gradleProperty("pluginSinceBuild")
-            untilBuild = providers.gradleProperty("pluginUntilBuild")
         }
     }
     signing {
@@ -83,7 +79,6 @@ dependencies {
 
 
         bundledPlugins(properties("platformBundledPlugins").map { it.split(',') })
-        pluginVerifier()
     }
 }
 changelog {
