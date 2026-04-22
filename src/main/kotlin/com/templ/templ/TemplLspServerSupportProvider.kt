@@ -25,23 +25,62 @@ class TemplLspServerSupportProvider : LspServerSupportProvider {
 
 private class TemplLspServerDescriptor(project: Project, val executable: File) :
     ProjectWideLspServerDescriptor(project, "templ") {
+    private val wslSupport = TemplWslSupport.fromExecutablePath(executable.absolutePath)
+
     override fun isSupportedFile(file: VirtualFile) = file.extension == "templ"
+
     override fun createCommandLine(): GeneralCommandLine {
-        val cmd = GeneralCommandLine(executable.absolutePath, "lsp")
+        val execPath = executable.absolutePath
         val settings = TemplSettings.getService(project).state
-        if (settings.goplsLog.isNotEmpty()) cmd.addParameter("-goplsLog=${settings.goplsLog}")
-        if (settings.log.isNotEmpty()) cmd.addParameter("-log=${settings.log}")
-        if (settings.http.isNotEmpty()) cmd.addParameter("-http=${settings.http}")
-        if (settings.goplsRPCTrace) cmd.addParameter("-goplsRPCTrace=true")
-        if (settings.pprof) cmd.addParameter("-pprof=true")
-        if (settings.noPreload) cmd.addParameter("-no-preload=true")
-        if (settings.goplsRemote.isNotEmpty()) cmd.addParameter("-gopls-remote=${settings.goplsRemote}")
 
         val goPath = GoSdkService.getInstance(project).getSdk(null).executable?.parent?.path
-        val currentPath = System.getenv("PATH").orEmpty()
-        goPath?.let { cmd.withEnvironment("PATH", "$it:$currentPath") }
+        val parameters = mutableListOf<String>()
+        if (settings.goplsLog.isNotEmpty()) {
+            val goplsLog = wslSupport?.normalizeCommandPath(settings.goplsLog) ?: settings.goplsLog
+            parameters.add("-goplsLog=$goplsLog")
+        }
+        if (settings.log.isNotEmpty()) {
+            val logPath = wslSupport?.normalizeCommandPath(settings.log) ?: settings.log
+            parameters.add("-log=$logPath")
+        }
+        if (settings.http.isNotEmpty()) parameters.add("-http=${settings.http}")
+        if (settings.goplsRPCTrace) parameters.add("-goplsRPCTrace=true")
+        if (settings.pprof) parameters.add("-pprof=true")
+        if (settings.noPreload) parameters.add("-no-preload=true")
+        if (settings.goplsRemote.isNotEmpty()) parameters.add("-gopls-remote=${settings.goplsRemote}")
+
+        val cmd = if (wslSupport != null) {
+            val linuxExecPath = wslSupport.toLinuxPath(execPath) ?: execPath
+            val linuxGoPath = goPath?.let(wslSupport::toLinuxPath)
+            wslSupport.createCommandLine(
+                executablePath = linuxExecPath,
+                subcommand = "lsp",
+                arguments = parameters,
+                workingDirectory = project.basePath,
+                prependPath = linuxGoPath,
+            )
+        } else {
+            GeneralCommandLine(execPath, "lsp").apply {
+                addParameters(parameters)
+                val currentPath = System.getenv("PATH").orEmpty()
+                goPath?.let { withEnvironment("PATH", "$it${File.pathSeparator}$currentPath") }
+            }
+        }
 
         return cmd
+    }
+
+    override fun getFileUri(file: VirtualFile): String {
+        return wslSupport?.toLinuxFileUri(file) ?: super.getFileUri(file)
+    }
+
+    override fun getFilePath(file: VirtualFile): String {
+        return wslSupport?.toLinuxFilePath(file) ?: super.getFilePath(file)
+    }
+
+    override fun findFileByUri(fileUri: String): VirtualFile? {
+        val idePath = wslSupport?.findIdePathByUri(fileUri)
+        return idePath?.let(::findLocalFileByPath) ?: super.findFileByUri(fileUri)
     }
 }
 

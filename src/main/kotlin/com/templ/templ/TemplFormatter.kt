@@ -34,15 +34,26 @@ class TemplFormatter : AsyncDocumentFormattingService() {
         if (!executable.exists()) return null
 
         val params = SmartList<String>()
+        val wslSupport = TemplWslSupport.fromExecutablePath(executable.absolutePath)
+        val formattedFilePath = wslSupport?.toLinuxPath(file.absolutePath) ?: file.absolutePath
 
         params.add("fmt")
         params.add("-stdout")
-        params.add(file.absolutePath)
+        params.add(formattedFilePath)
 
-        val commandLine: GeneralCommandLine = GeneralCommandLine()
-            .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
-            .withExePath(executable.absolutePath)
-            .withParameters(params)
+        val commandLine: GeneralCommandLine = if (wslSupport != null) {
+            wslSupport.createCommandLine(
+                executablePath = wslSupport.toLinuxPath(executable.absolutePath) ?: executable.absolutePath,
+                subcommand = "fmt",
+                arguments = listOf("-stdout", formattedFilePath),
+                workingDirectory = file.parent,
+                prependPath = null,
+            )
+        } else {
+            GeneralCommandLine()
+                .withExePath(executable.absolutePath)
+                .withParameters(params)
+        }.withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
 
         val handler = OSProcessHandler(commandLine.withCharset(StandardCharsets.UTF_8))
 

@@ -38,3 +38,8 @@ If the lexer token is correct, you need to modify the grammar which generates th
 1. Edit the [TemplParser.bnf](./src/main/grammar/Templ.bnf) file.
 2. Run the `Generate Parser Code` action to generate the parser code. This also generates the PSI classes but does not remove the old ones, so you might want to remove the `./src/main/gen/com/templ/templ/psi` directory before running this action.
 3. Start the IDE with the `Run Plugin` configuration to see if the parser works as expected. You can also run the [parser test](./src/test/kotlin/com/templ/templ/parsing/TemplParsingTest.kt) and preferably add a new test case for the bug.
+
+## Usage
+Build the plugin with ./gradlew buildPlugin
+Install the built plugin from disk in GoLand: Settings → Plugins → ⚙ → Install Plugin from Disk
+Point to the .zip in build/distributions/
